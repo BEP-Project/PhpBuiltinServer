@@ -20,6 +20,10 @@ class PhpBuiltinServer extends Extension
 
     public function __construct($config, $options)
     {
+        // Small hack, because $config seems to be empty
+        $globalConfig = \Codeception\Configuration::config();
+        $config = $globalConfig['extensions']['config']['Codeception\Extension\PhpBuiltinServer'];
+        
         if (version_compare(PHP_VERSION, '5.4', '<')) {
             throw new ExtensionException($this, 'Requires PHP built-in web server, available since PHP 5.4.0.');
         }
@@ -68,14 +72,15 @@ class PhpBuiltinServer extends Extension
         $parameters .= ' -dcodecept.access_log="' . Configuration::logDir() . 'phpbuiltinserver.access_log.txt' . '"';
 
         $command = sprintf(
-            PHP_BINARY . ' %s -S %s:%s -t "%s" %s',
+            // Added quotes for last argument
+            PHP_BINARY . ' %s -S %s:%s -t "%s" "%s"',
             $parameters,
             $this->config['hostname'],
             $this->config['port'],
             realpath($this->config['documentRoot']),
             __DIR__ . '/Router.php'
         );
-
+        
         return $command;
     }
 
@@ -109,7 +114,9 @@ class PhpBuiltinServer extends Extension
     {
         if ($this->resource !== null) {
             foreach ($this->pipes AS $pipe) {
-                fclose($pipe);
+                if (feof($pipe)) {
+                    fclose($pipe);
+                }
             }
             proc_terminate($this->resource, 2);
             unset($this->resource);
@@ -131,3 +138,4 @@ class PhpBuiltinServer extends Extension
         // dummy to keep reference to this instance, so that it wouldn't be destroyed immediately
     }
 }
+
